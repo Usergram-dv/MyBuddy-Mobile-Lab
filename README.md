@@ -1,33 +1,43 @@
 # My Buddy — Mobile Lab
 
-This repository contains the **separate Android Mobile Benchmark Lab** extracted from My Buddy V6.3. It is not the full My Buddy PWA/Personal AI Agent.
+This repository is the **separate Android on-device benchmark app** extracted from My Buddy V6.3. It is not the full My Buddy PWA/Personal AI Agent.
 
-## What is built here
-- Android Kotlin app for importing compatible local model files and running on-device benchmark cases.
-- Versioned Hindi/Hinglish, planning, tool-intent, coding, hallucination, memory and speed/RAM benchmark suites.
-- Python benchmark validation and comparison tools.
-- GitHub Actions workflow that builds a debug APK and runs the benchmark-kit unit tests.
+## Scope
+- Kotlin Android benchmark app for importing compatible local model files.
+- Hindi/Hinglish, tool-intent, multi-step planning, coding, hallucination, in-conversation memory and speed/RAM suites.
+- Python dataset validation, scoring and comparison tools.
+- GitHub Actions debug APK build.
 
 ## Important limitations
-- The APK is a diagnostic/benchmark prototype. It is not the full My Buddy assistant or a general-purpose Android automation agent.
-- No AI model weights are bundled. Models are imported manually by the user.
-- No network, microphone, camera, contacts or broad storage permission is declared by the Android app.
-- The GitHub Actions APK is an unsigned debug build; it is not a Play Store release.
-- Physical-device behavior, especially on Realme 8, must be tested separately.
+- This is a diagnostic/benchmark prototype, not the full My Buddy assistant or an Android automation agent.
+- Model weights are not bundled; import them manually from their upstream source.
+- Tool-call benchmark entries validate proposed JSON only. They do not execute shell, browser, file or phone actions.
+- The debug APK is unsigned and is not a Play Store release.
+- Realme 8 compatibility, model inference, memory use and thermal stability require physical-device testing.
 
-## Source archive
-To keep this public repository small and avoid committing generated checkpoints or personal workspace logs, the reviewed Mobile Lab source is stored as split ZIP parts under `source-v6.3/`. The workflow concatenates and verifies the archive, then extracts it into `V5_Mobile_Lab/` for the build.
+## Add the source package once
+The source package is intentionally separate from the larger private My Buddy workspace. Download the small source archive `mybuddy_mobile_lab_source.zip` from the ChatGPT conversation, then upload it to this repository at:
 
-## Build
-Open **Actions → Build My Buddy Mobile Lab** and run the workflow, or push changes to the build branch. On success, download the `mybuddy-mobile-lab-debug-apk` artifact from the workflow run.
+`source-v6.3/mybuddy_mobile_lab_source.zip`
+
+Create the `source-v6.3` folder when uploading. Do not upload the 47 MB full V6.3 workspace here; this public repository is only for the standalone benchmark lab. The archive contains source and benchmark datasets, not model weights or signing secrets.
+
+## Build the APK
+After the source archive is committed:
+1. Open **Actions**.
+2. Select **Build My Buddy Mobile Lab**.
+3. Press **Run workflow** on branch `build/v6.3-mobile-lab`.
+4. Download the `mybuddy-mobile-lab-debug-apk` artifact when the workflow succeeds.
+
+The workflow verifies the archive, runs the Python benchmark tests and dataset validator, then runs `gradle :app:assembleDebug`. A failed build is not reported as an APK.
 
 ## Local commands
-From the extracted `V5_Mobile_Lab/` directory:
+From the extracted archive directory:
 
 ```bash
 python -m unittest discover -s benchmark_kit/tests -v
+python benchmark_kit/validate.py validate
 gradle --no-daemon :app:assembleDebug
 ```
 
-## Source status
-The source archive is derived from the V6.3 Mobile Lab folder. The full My Buddy PWA and research workspace are intentionally not included in this public repository.
+The full PWA, Node gateway, own-model training workspace and private notes are intentionally excluded from this public repository.

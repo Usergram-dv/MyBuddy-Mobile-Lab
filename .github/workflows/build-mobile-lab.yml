@@ -6,7 +6,7 @@ on:
     branches:
       - build/v6.3-mobile-lab
     paths:
-      - "source-v6.3/**"
+      - "source-v6.3/mybuddy_mobile_lab_source.zip"
       - ".github/workflows/build-mobile-lab.yml"
 
 permissions:

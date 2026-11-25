@@ -1,0 +1,107 @@
+name: Build My Buddy Mobile Lab
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - build/v6.3-mobile-lab
+    paths:
+      - "source-v6.3/**"
+      - ".github/workflows/build-mobile-lab.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mybuddy-mobile-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-debug:
+    name: Verify source and build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify source archive exists
+        shell: bash
+        run: |
+          test -s source-v6.3/mybuddy_mobile_lab_source.zip
+          unzip -tq source-v6.3/mybuddy_mobile_lab_source.zip
+
+      - name: Extract source
+        run: |
+          mkdir -p V5_Mobile_Lab
+          unzip -q source-v6.3/mybuddy_mobile_lab_source.zip -d V5_Mobile_Lab
+          test -s V5_Mobile_Lab/settings.gradle.kts
+          test -s V5_Mobile_Lab/app/build.gradle.kts
+          test -s V5_Mobile_Lab/app/src/main/AndroidManifest.xml
+
+      - name: Check archive for secrets and model weights
+        shell: bash
+        run: |
+          if find V5_Mobile_Lab -type f \( -name ".env" -o -name "*.jks" -o -name "*.keystore" -o -name "*.litertlm" -o -name "*.gguf" \) | grep -q .; then
+            echo "Unexpected secret, signing key or model-weight file found."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run benchmark-kit unit tests
+        working-directory: V5_Mobile_Lab
+        run: python -m unittest discover -s benchmark_kit/tests -v
+
+      - name: Validate all benchmark datasets
+        working-directory: V5_Mobile_Lab
+        run: python benchmark_kit/validate.py validate
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Assemble debug APK
+        working-directory: V5_Mobile_Lab
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Verify APK exists
+        working-directory: V5_Mobile_Lab
+        run: |
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mybuddy-mobile-lab-debug-apk
+          path: V5_Mobile_Lab/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mybuddy-mobile-lab-build-reports
+          path: |
+            V5_Mobile_Lab/app/build/reports/**
+            V5_Mobile_Lab/app/build/outputs/logs/**
+          if-no-files-found: ignore
+          retention-days: 7
